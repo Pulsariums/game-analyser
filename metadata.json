@@ -1,0 +1,5 @@
+{
+  "name": "Game Performance Estimator",
+  "description": "Estimate your Frames Per Second (FPS) in any game based on your PC's hardware. Get a detailed, AI-powered analysis and optimization tips to maximize performance.",
+  "requestFramePermissions": []
+}
