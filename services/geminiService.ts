@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { AnalysisResult, DeviceSpecs } from '../types';
 
@@ -21,9 +22,17 @@ const analysisSchema = {
       type: Type.STRING, 
       description: 'The single component that is the primary performance bottleneck. Can be "CPU", "GPU", "RAM", or "Balanced" if no single component is a clear bottleneck.' 
     },
+    bottleneckExplanation: {
+        type: Type.STRING,
+        description: 'A brief 1-2 sentence explanation of why the component is a bottleneck. If "Balanced", explain what that means (e.g., "The CPU and GPU are well-matched for this game, and neither is significantly holding the other back.").'
+    },
     upgradeSuggestion: { 
       type: Type.STRING, 
       description: 'A clear, concise recommendation for which component to upgrade for the biggest performance gain in this specific game. For example: "Upgrading the GPU to a model like the RTX 4060 would yield the most significant FPS increase."'
+    },
+    estimatedPowerDraw: {
+        type: Type.STRING,
+        description: 'An estimated range for the total system power draw in watts under a typical gaming load, e.g., "350-450W".'
     },
     performanceScore: {
         type: Type.INTEGER,
@@ -83,10 +92,10 @@ const analysisSchema = {
       }
     }
   },
-  required: ['summary', 'keyFactor', 'bottleneckComponent', 'upgradeSuggestion', 'performanceScore', 'componentBreakdown', 'scenarios']
+  required: ['summary', 'keyFactor', 'bottleneckComponent', 'bottleneckExplanation', 'upgradeSuggestion', 'estimatedPowerDraw', 'performanceScore', 'componentBreakdown', 'scenarios']
 };
 
-export const getFpsAnalysis = async (cpu: string, gpu: string, ram: string, virtualRam: string, gameName: string, language: string): Promise<AnalysisResult> => {
+export const getFpsAnalysis = async (cpu: string, gpu: string, ram: string, ramMhz: string, virtualRam: string, gameName: string, language: string): Promise<AnalysisResult> => {
   try {
     const prompt = `
       Analyze the following PC configuration for its performance in the game "${gameName}".
@@ -95,16 +104,18 @@ export const getFpsAnalysis = async (cpu: string, gpu: string, ram: string, virt
       User Hardware:
       - CPU: ${cpu}
       - GPU: ${gpu}
-      - RAM: ${ram}
+      - RAM: ${ram} (${ramMhz ? `${ramMhz} MHz` : 'Speed not specified'})
       - Virtual RAM (Page File): ${virtualRam}
 
       Analysis Steps:
       1.  **Game Research**: Briefly assess the typical system requirements and performance characteristics of "${gameName}". Is it CPU-bound, GPU-bound, or RAM-heavy?
-      2.  **Hardware Analysis**: Evaluate the user's hardware against the game's needs. Pay special attention to the relationship between physical RAM and Virtual RAM. A large Virtual RAM is not a substitute for sufficient physical RAM and can cause stuttering if accessed frequently, but it can prevent crashes from memory exhaustion.
+      2.  **Hardware Analysis**: Evaluate the user's hardware against the game's needs. Consider the RAM speed (${ramMhz}), as it can be important for CPU-intensive games or certain CPU architectures (like AMD Ryzen). Pay special attention to the relationship between physical RAM and Virtual RAM. A large Virtual RAM is not a substitute for sufficient physical RAM and can cause stuttering if accessed frequently, but it can prevent crashes from memory exhaustion.
       3.  **Bottleneck Identification**: Clearly identify the primary performance bottleneck from the provided components (CPU, GPU, or RAM). State "Balanced" if no single one is a clear limiter. The bottleneck should focus on the primary physical components.
-      4.  **Upgrade Path**: Based on a bottleneck, provide a concise, actionable upgrade suggestion.
-      5.  **Performance Score**: Based on all factors, provide a single integer score from 1 to 100. A score of 50 means it's playable at medium settings, while 90+ is excellent for high-refresh-rate gaming.
-      6.  **Performance Scenarios**: Create at least two distinct performance scenarios (e.g., '1080p Low Settings', '1080p High Settings') with estimated FPS ranges.
+      4.  **Bottleneck Explanation**: Provide a brief, simple explanation for the identified bottleneck. If the system is "Balanced", explain that this is a good thing, meaning the components work well together for this game.
+      5.  **Upgrade Path**: Based on a bottleneck, provide a concise, actionable upgrade suggestion.
+      6.  **Power Estimation**: Estimate the total system power draw in watts under a typical gaming load. Consider the TDP/TGP of the CPU and GPU primarily, plus a general overhead for other components (RAM, storage, motherboard). Provide a reasonable range (e.g., "350-450W").
+      7.  **Performance Score**: Based on all factors, provide a single integer score from 1 to 100. A score of 50 means it's playable at medium settings, while 90+ is excellent for high-refresh-rate gaming.
+      8.  **Performance Scenarios**: Create at least two distinct performance scenarios (e.g., '1080p Low Settings', '1080p High Settings') with estimated FPS ranges.
 
       Structure your entire response according to the provided JSON schema. Ensure the componentBreakdown includes an entry for Virtual RAM.
     `;
@@ -140,8 +151,9 @@ const deviceSpecsSchema = {
     cpu: { type: Type.STRING, description: 'The full model name of the CPU or SoC (e.g., "Apple M2" or "Qualcomm Snapdragon 8 Gen 2").' },
     gpu: { type: Type.STRING, description: 'The full model name of the GPU (e.g., "Apple 10-core GPU" or "Adreno 740").' },
     ram: { type: Type.STRING, description: 'The most common RAM amount for the base model (e.g., "8GB").' },
+    ramMhz: { type: Type.STRING, description: 'The RAM speed in MHz for the base model (e.g., "3200"). If not applicable or available, return "N/A".' },
   },
-  required: ['cpu', 'gpu', 'ram'],
+  required: ['cpu', 'gpu', 'ram', 'ramMhz'],
 };
 
 export const getDeviceSpecs = async (deviceName: string, language: string): Promise<DeviceSpecs> => {
@@ -150,7 +162,7 @@ export const getDeviceSpecs = async (deviceName: string, language: string): Prom
       You are a device specification expert. The user has provided a device name: "${deviceName}".
       Your task is to find the official technical specifications for this device.
       - If it is a mobile phone or tablet, identify its SoC and list the specific CPU and GPU models within that SoC.
-      - For RAM, provide the most common or base model configuration.
+      - For RAM, provide the most common or base model configuration amount and its speed in MHz (e.g., "3200"). If speed is not applicable (like LPDDR5X where it's complex), return "N/A".
       - If you cannot find the device, or the name is too generic, you must throw an error.
       - All text in your response must be in the requested language: "${language}".
       

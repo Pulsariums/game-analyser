@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import type { AnalysisResult, ComponentAnalysis } from '../types';
 import { ResultCard } from './ResultCard';
-import { CpuIcon, GpuIcon, RamIcon, VramIcon, BottleneckIcon, UpgradeIcon } from './icons';
+import { CpuIcon, GpuIcon, RamIcon, VramIcon, BottleneckIcon, UpgradeIcon, PowerIcon } from './icons';
 
 const ComponentIcon: React.FC<{ component: ComponentAnalysis['component'] }> = ({ component }) => {
   const className = "w-8 h-8 text-emerald-400";
@@ -36,7 +37,8 @@ const VerdictCard: React.FC<{ result: AnalysisResult; t: any }> = ({ result, t }
                 <BottleneckIcon className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-1" />
                 <div>
                     <h4 className="font-semibold text-yellow-300">{t.primaryBottleneck}</h4>
-                    <p className="text-gray-300">{result.bottleneckComponent}</p>
+                    <p className="text-gray-300 font-medium">{result.bottleneckComponent}</p>
+                    {result.bottleneckExplanation && <p className="text-sm text-gray-400 mt-1">{result.bottleneckExplanation}</p>}
                 </div>
             </div>
             <div className="flex items-start gap-3">
@@ -44,6 +46,13 @@ const VerdictCard: React.FC<{ result: AnalysisResult; t: any }> = ({ result, t }
                 <div>
                     <h4 className="font-semibold text-green-300">{t.upgradeSuggestion}</h4>
                     <p className="text-gray-300">{result.upgradeSuggestion}</p>
+                </div>
+            </div>
+             <div className="flex items-start gap-3">
+                <PowerIcon className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
+                <div>
+                    <h4 className="font-semibold text-blue-300">{t.estimatedPowerDraw}</h4>
+                    <p className="text-gray-300">{result.estimatedPowerDraw}</p>
                 </div>
             </div>
         </div>
@@ -62,6 +71,7 @@ export const AnalysisDisplay: React.FC<{
         analysisComplete: "Analysis Complete",
         primaryBottleneck: "Primary Bottleneck",
         upgradeSuggestion: "Upgrade Suggestion",
+        estimatedPowerDraw: "Estimated Power Draw",
         hardwareBreakdown: "Hardware Breakdown",
         performanceScenarios: "Performance Scenarios",
         saveForComparison: "Save for Comparison",
@@ -71,6 +81,7 @@ export const AnalysisDisplay: React.FC<{
         analysisComplete: "Analiz Tamamlandı",
         primaryBottleneck: "Temel Darboğaz",
         upgradeSuggestion: "Yükseltme Önerisi",
+        estimatedPowerDraw: "Tahmini Güç Tüketimi",
         hardwareBreakdown: "Donanım Analizi",
         performanceScenarios: "Performans Senaryoları",
         saveForComparison: "Karşılaştırma İçin Kaydet",

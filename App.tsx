@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, FormEvent, useEffect, useCallback, useMemo } from 'react';
 import type { AnalysisResult, SavedAnalysisResult, DeviceSpecs, Translations } from './types';
 import { getFpsAnalysis, getDeviceSpecs, translateUI } from './services/geminiService';
@@ -30,6 +31,8 @@ const initialTranslations: Translations = {
     gpuPlaceholder: "e.g., RTX 3070",
     ramLabel: "RAM Amount",
     ramPlaceholder: "e.g., 16GB",
+    ramMhzLabel: "RAM Speed (MHz)",
+    ramMhzPlaceholder: "e.g., 3200",
     virtualRamLabel: "Virtual RAM (Page File)",
     virtualRamPlaceholder: "e.g., 32GB",
     submitButton: "Estimate Performance",
@@ -65,6 +68,9 @@ const initialTranslations: Translations = {
     cancel: "Cancel",
     addAndTranslate: "Add & Translate",
     languageExistsError: 'Language key "{langKey}" already exists.',
+    primaryBottleneck: "Primary Bottleneck",
+    upgradeSuggestion: "Upgrade Suggestion",
+    estimatedPowerDraw: "Estimated Power Draw",
   },
   tr: {
     title: "Oyun Performans Hesaplayıcı",
@@ -82,6 +88,8 @@ const initialTranslations: Translations = {
     gpuPlaceholder: "Örn: RTX 3070",
     ramLabel: "RAM Miktarı",
     ramPlaceholder: "Örn: 16GB",
+    ramMhzLabel: "RAM Hızı (MHz)",
+    ramMhzPlaceholder: "Örn: 3200",
     virtualRamLabel: "Sanal RAM (Disk Belleği)",
     virtualRamPlaceholder: "Örn: 32GB",
     submitButton: "Performansı Hesapla",
@@ -117,6 +125,9 @@ const initialTranslations: Translations = {
     cancel: "İptal",
     addAndTranslate: "Ekle ve Çevir",
     languageExistsError: '"{langKey}" dil kodu zaten mevcut.',
+    primaryBottleneck: "Temel Darboğaz",
+    upgradeSuggestion: "Yükseltme Önerisi",
+    estimatedPowerDraw: "Tahmini Güç Tüketimi",
   }
 };
 
@@ -161,6 +172,7 @@ const App: React.FC = () => {
   const [cpu, setCpu] = useState('');
   const [gpu, setGpu] = useState('');
   const [ram, setRam] = useState('');
+  const [ramMhz, setRamMhz] = useState('');
   const [virtualRam, setVirtualRam] = useState('');
   const [isFetchingSpecs, setIsFetchingSpecs] = useState(false);
 
@@ -231,7 +243,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setProgress({ statusText: `Analyzing ${gameName} on your custom PC...`, progress: 25 });
     try {
-      const analysisResult = await getFpsAnalysis(cpu, gpu, ram, virtualRam || 'N/A', gameName, language);
+      const analysisResult = await getFpsAnalysis(cpu, gpu, ram, ramMhz || 'Not specified', virtualRam || 'N/A', gameName, language);
       setProgress({ statusText: 'Finalizing report...', progress: 100 });
       setResult(analysisResult);
     } catch (err) {
@@ -250,6 +262,7 @@ const App: React.FC = () => {
       setCpu(specs.cpu);
       setGpu(specs.gpu);
       setRam(specs.ram);
+      setRamMhz(specs.ramMhz || '');
       setVirtualRam('N/A');
     } catch (err) {
       setError(err instanceof Error ? err.message : t.fetchSpecsError);
@@ -296,7 +309,7 @@ const App: React.FC = () => {
                     statusText: `Analyzing (${completedAnalyses}/${totalAnalyses}): ${game} on ${device}`, 
                     progress: ((completedAnalyses-1) / totalAnalyses) * 100 
                 });
-                const analysis = await getFpsAnalysis(specs.cpu, specs.gpu, specs.ram, 'N/A', game, language);
+                const analysis = await getFpsAnalysis(specs.cpu, specs.gpu, specs.ram, specs.ramMhz || 'N/A', 'N/A', game, language);
                 results.push({
                     ...analysis,
                     id: `${new Date().toISOString()}-${device}-${game}`,
@@ -323,12 +336,8 @@ const App: React.FC = () => {
 
     if (viewToReset === 'analyzer' || result || error) {
       setResult(null);
-      setDeviceName('');
-      setGameName('PUBG Mobile');
-      setCpu('');
-      setGpu('');
-      setRam('');
-      setVirtualRam('');
+      // Persist form values for the next analysis as requested by the user.
+      // The device name, game name, and hardware specs will not be cleared.
     }
     if (viewToReset === 'matrix' || matrixResult) {
         setMatrixResult(null);
@@ -343,7 +352,7 @@ const App: React.FC = () => {
       ...result,
       id: new Date().toISOString() + Math.random(),
       gameName,
-      deviceSpecs: { cpu: deviceName || cpu, gpu, ram },
+      deviceSpecs: { cpu: deviceName || cpu, gpu, ram, ramMhz },
       savedAt: new Date().toISOString(),
     };
     setSavedResults(prev => [newSave, ...prev]);
@@ -447,11 +456,17 @@ const App: React.FC = () => {
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2"><GpuIcon className="w-5 h-5" /> {t.gpuLabel}</label>
                 <input type="text" value={gpu} onChange={e => setGpu(e.target.value)} placeholder={t.gpuPlaceholder} className="w-full bg-gray-700/50 border border-gray-600 rounded-md p-2 text-gray-200 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition" required />
               </div>
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2"><RamIcon className="w-5 h-5" /> {t.ramLabel}</label>
-                <input type="text" value={ram} onChange={e => setRam(e.target.value)} placeholder={t.ramPlaceholder} className="w-full bg-gray-700/50 border border-gray-600 rounded-md p-2 text-gray-200 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition" required />
+              <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                 <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2"><RamIcon className="w-5 h-5" /> {t.ramLabel}</label>
+                    <input type="text" value={ram} onChange={e => setRam(e.target.value)} placeholder={t.ramPlaceholder} className="w-full bg-gray-700/50 border border-gray-600 rounded-md p-2 text-gray-200 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition" required />
+                 </div>
+                 <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2"><RamIcon className="w-5 h-5 opacity-70" /> {t.ramMhzLabel}</label>
+                    <input type="text" value={ramMhz} onChange={e => setRamMhz(e.target.value)} placeholder={t.ramMhzPlaceholder} className="w-full bg-gray-700/50 border border-gray-600 rounded-md p-2 text-gray-200 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition" />
+                 </div>
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2"><VramIcon className="w-5 h-5" /> {t.virtualRamLabel}</label>
                 <input type="text" value={virtualRam} onChange={e => setVirtualRam(e.target.value)} placeholder={t.virtualRamPlaceholder} className="w-full bg-gray-700/50 border border-gray-600 rounded-md p-2 text-gray-200 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition" />
               </div>

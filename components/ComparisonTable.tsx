@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import type { SavedAnalysisResult } from '../types';
 
@@ -13,9 +15,10 @@ export const ComparisonTable: React.FC<{
   const rows = [
     { metric: t.cpuLabel, values: results.map(r => r.deviceSpecs.cpu) },
     { metric: t.gpuLabel, values: results.map(r => r.deviceSpecs.gpu) },
-    { metric: t.ramLabel, values: results.map(r => r.deviceSpecs.ram) },
+    { metric: t.ramLabel, values: results.map(r => `${r.deviceSpecs.ram}${r.deviceSpecs.ramMhz && r.deviceSpecs.ramMhz !== 'N/A' ? ` (${r.deviceSpecs.ramMhz} MHz)` : ''}`) },
     { metric: t.primaryBottleneck, values: results.map(r => r.bottleneckComponent) },
-    { metric: t.upgradeSuggestion, values: results.map(r => r.upgradeSuggestion) }
+    { metric: t.upgradeSuggestion, values: results.map(r => r.upgradeSuggestion) },
+    { metric: t.estimatedPowerDraw, values: results.map(r => r.estimatedPowerDraw) }
   ];
 
   if (results[0].scenarios) {

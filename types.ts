@@ -1,4 +1,5 @@
 
+
 export interface FpsScenario {
   name: string;
   resolution: string;
@@ -17,7 +18,9 @@ export interface AnalysisResult {
   summary: string;
   keyFactor: string;
   bottleneckComponent: string;
+  bottleneckExplanation: string;
   upgradeSuggestion: string;
+  estimatedPowerDraw: string;
   performanceScore: number;
   componentBreakdown: ComponentAnalysis[];
   scenarios: FpsScenario[];
@@ -27,6 +30,7 @@ export interface DeviceSpecs {
   cpu: string;
   gpu: string;
   ram: string;
+  ramMhz?: string;
 }
 
 export interface SavedAnalysisResult extends AnalysisResult {
